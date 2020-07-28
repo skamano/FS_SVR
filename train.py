@@ -1,10 +1,13 @@
 import os
 import torch
 import torchvision
+import torch.nn.functional as F
 from argparse import ArgumentParser
 from torchvision import transforms
 from torch.nn import BCELoss
 from models import VAE, Flatten, UnFlatten
+from torch.utils.data import DataLoader
+from datasets import ShapeNetDataset
 
 
 parser = ArgumentParser()
@@ -12,6 +15,11 @@ parser.add_argument("--epochs", help="Number of epochs for training on rendered 
                     type=int, default=50)
 parser.add_argument("--model", choices=["LEO", "VAE"], help="Specifies which architecture to train", 
                     default="VAE")
+parser.add_argument("--batch_size", choices=[4, 8, 16, 32, 64], help="Batch size for training.",
+                    default=32)
+parser.add_argument("--num_workers", choices=list(range(1, 11)), 
+                    help="Number of worker threads for batched dataloading.",
+                    default=4)
 args = parser.parse_args()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -28,6 +36,14 @@ def loss_fn(recon_x, x, mu, logvar):
     return BCE + KLD, BCE, KLD
 
 def train_VAE():
+    transform = transforms.Compose([transforms.CenterCrop(127),
+                                   transforms.ToTensor()])
+
+    shapenet = ShapeNetDataset(root_dir='/home/svcl-oowl/dataset/shapenet',
+                               transform=transform)
+
+    dataloader = DataLoader(shapenet, batch_size=args.batch_size, num_workers=4)
+
     vae = VAE(image_channels=3).to(device)
 
     if os.path.isfile('vae.torch'):
@@ -35,22 +51,25 @@ def train_VAE():
     optimizer = torch.optim.Adam(vae.parameters(), lr=1e-3)
     
     for epoch in range(args.epochs):
-        for idx, (images, _) in enumerate(dataloader):
+        for i_batch, images in enumerate(dataloader):
+            images = images.to(device)
             recon_images, mu, logvar = vae(images)
             loss, bce, kld = loss_fn(recon_images, images, mu, logvar)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
+            bs = args.batch_size
             to_print = "Epoch[{}/{}] Loss: {:.3f} {:.3f} {:.3f}".format(epoch+1, 
-                                    epochs, loss.data[0]/bs, bce.data[0]/bs, kld.data[0]/bs)
+                                    args.epochs, loss.data.item()/bs, bce.data.item()/bs, kld.data.item()/bs)
             print(to_print)
+            print("Images processed[{}/{}]".format(i_batch*bs, "?"))
 
     torch.save(vae.state_dict(), 'vae.torch')
 
 
 def train_LEO():
-    pass
+    raise NotImplementedError
 
 
 def main():

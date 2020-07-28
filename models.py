@@ -9,6 +9,8 @@ from torchvision import transforms
 from torchvision.utils import save_image
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 class View(nn.Module):
     def __init__(self, shape):
         super(View, self).__init__()
@@ -41,6 +43,8 @@ class VAE(nn.Module):
             nn.ReLU(),
             nn.Conv2d(128, 256, kernel_size=4, stride=2),
             nn.ReLU(),
+            nn.Conv2d(256, 256, kernel_size=4, stride=2),
+            nn.ReLU(),
             Flatten()
         )
         
@@ -56,14 +60,16 @@ class VAE(nn.Module):
             nn.ReLU(),
             nn.ConvTranspose2d(64, 32, kernel_size=6, stride=2),
             nn.ReLU(),
-            nn.ConvTranspose2d(32, image_channels, kernel_size=6, stride=2),
-            nn.Sigmoid(),
+            nn.ConvTranspose2d(32, 16, kernel_size=6, stride=2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, image_channels, kernel_size=5, padding=2, stride=2),
+            nn.Sigmoid()
         )
         
     def reparameterize(self, mu, logvar):
         std = logvar.mul(0.5).exp_()
         # return torch.normal(mu, std)
-        esp = torch.randn(*mu.size())
+        esp = torch.randn(*mu.size()).to(device)
         z = mu + std * esp
         return z
     
