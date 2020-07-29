@@ -38,12 +38,16 @@ class VAE(nn.Module):
             nn.Conv2d(image_channels, 32, kernel_size=4, stride=2),
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.Conv2d(64, 128, kernel_size=4, stride=2),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.Conv2d(128, 256, kernel_size=4, stride=2),
+            nn.BatchNorm2d(256),
             nn.ReLU(),
             nn.Conv2d(256, 256, kernel_size=4, stride=2),
+            nn.BatchNorm2d(256),
             nn.ReLU(),
             Flatten()
         )
@@ -55,12 +59,16 @@ class VAE(nn.Module):
         self.decoder = nn.Sequential(
             UnFlatten(),
             nn.ConvTranspose2d(h_dim, 128, kernel_size=5, stride=2),
+            nn.BatchNorm2d(128),
             nn.ReLU(),
             nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.ConvTranspose2d(64, 32, kernel_size=6, stride=2),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.ConvTranspose2d(32, 16, kernel_size=6, stride=2),
+            nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.ConvTranspose2d(16, image_channels, kernel_size=5, padding=2, stride=2),
             nn.Sigmoid()
@@ -111,12 +119,15 @@ class AutoEncoder(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(16, 8, 3, stride=2),  # H_out = (111 - 3) / 2 + 1 = 55
             # W_out = (111 - 3) / 2 + 1 =  55 
+            nn.BatchNorm2d(8),
             nn.ReLU(True),
             nn.Conv2d(8, 4, 3, stride=2),  # H_out = (55 - 3) / 2 + 1 = 26 
             # W_out = (55 - 3) / 2 + 1 = 26
+            nn.BatchNorm2d(4),
             nn.ReLU(True),
             nn.Conv2d(4, 1, 4, stride=1),  # H_out = (26 - 4) + 1 = 23 
             # W_out = (26 - 4) / 2 + 1 = 23 
+            nn.BatchNorm2d(1),
             # 23 * 23 = 529
             nn.ReLU(True),
             # 529-dimensional shape code

@@ -4,9 +4,10 @@ import torchvision
 import torch.nn.functional as F
 from argparse import ArgumentParser
 from torchvision import transforms
-from torch.nn import BCELoss
+from torch.nn import BCELoss, init
 from models import VAE, Flatten, UnFlatten
 from torch.utils.data import DataLoader
+# from torch.utils.tensorboard import SummaryWriter
 from datasets import ShapeNetDataset
 
 
@@ -19,7 +20,7 @@ parser.add_argument("--batch_size", choices=[4, 8, 16, 32, 64], help="Batch size
                     default=64)
 parser.add_argument("--num_workers", choices=list(range(1, 11)), 
                     help="Number of worker threads for batched dataloading.",
-                    default=8)
+                    default=4)
 args = parser.parse_args()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -46,7 +47,10 @@ def train_VAE():
                                transform=transform)
 
     print("Initializing dataloader: {} workers allocated".format(args.num_workers))
-    dataloader = DataLoader(shapenet, batch_size=args.batch_size, num_workers=args.num_workers)
+    dataloader = DataLoader(shapenet, 
+                            batch_size=args.batch_size, 
+                            num_workers=args.num_workers, 
+                            worker_init_fn=shapenet.worker_init_fn)
 
     print("Initializing model...")
     vae = VAE(image_channels=3).to(device)
@@ -54,7 +58,7 @@ def train_VAE():
 
     if os.path.isfile('vae.torch'):
         print("Previous checkpoint found. Loading from memory...")
-        vae.load_state_dict(torch.load('vae.torch', map_location='cpu'))
+        vae.load_state_dict(torch.load('vae.torch', map_location=device))
     optimizer = torch.optim.Adam(vae.parameters(), lr=1e-3)
     
     for epoch in range(args.epochs):
@@ -70,9 +74,9 @@ def train_VAE():
             to_print = "Epoch[{}/{}] Loss: {:.3f} {:.3f} {:.3f}".format(epoch+1, 
                                     args.epochs, loss.data.item()/bs, bce.data.item()/bs, kld.data.item()/bs)
             print(to_print)
-            print("Images processed[{}/{}]".format(i_batch*bs, "?"))
+            print("Images processed[{}/{}]".format(i_batch*bs, shapenet.length))
 
-    torch.save(vae.state_dict(), 'vae.torch')
+        torch.save(vae.state_dict(), 'vae.torch')
 
 
 def train_LEO():
