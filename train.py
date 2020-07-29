@@ -12,17 +12,18 @@ from datasets import ShapeNetDataset
 
 parser = ArgumentParser()
 parser.add_argument("--epochs", help="Number of epochs for training on rendered RGB images from ShapeNet",
-                    type=int, default=50)
+                    type=int, default=500)
 parser.add_argument("--model", choices=["LEO", "VAE"], help="Specifies which architecture to train", 
                     default="VAE")
 parser.add_argument("--batch_size", choices=[4, 8, 16, 32, 64], help="Batch size for training.",
-                    default=32)
+                    default=64)
 parser.add_argument("--num_workers", choices=list(range(1, 11)), 
                     help="Number of worker threads for batched dataloading.",
-                    default=4)
+                    default=8)
 args = parser.parse_args()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def loss_fn(recon_x, x, mu, logvar):
     BCE = F.binary_cross_entropy(recon_x, x, size_average=False)
@@ -35,18 +36,24 @@ def loss_fn(recon_x, x, mu, logvar):
 
     return BCE + KLD, BCE, KLD
 
+
 def train_VAE():
     transform = transforms.Compose([transforms.CenterCrop(127),
                                    transforms.ToTensor()])
 
+    print("Loading ShapeNet...")
     shapenet = ShapeNetDataset(root_dir='/home/svcl-oowl/dataset/shapenet',
                                transform=transform)
 
-    dataloader = DataLoader(shapenet, batch_size=args.batch_size, num_workers=4)
+    print("Initializing dataloader: {} workers allocated".format(args.num_workers))
+    dataloader = DataLoader(shapenet, batch_size=args.batch_size, num_workers=args.num_workers)
 
+    print("Initializing model...")
     vae = VAE(image_channels=3).to(device)
+    print(vae)
 
     if os.path.isfile('vae.torch'):
+        print("Previous checkpoint found. Loading from memory...")
         vae.load_state_dict(torch.load('vae.torch', map_location='cpu'))
     optimizer = torch.optim.Adam(vae.parameters(), lr=1e-3)
     
@@ -74,11 +81,13 @@ def train_LEO():
 
 def main():
     if args.model == 'VAE':
+        print("Training VAE")
         train_VAE()
     elif args.model == 'LEO':
         train_LEO()
     else:
         raise NotImplementedError
+
 
 if __name__ == "__main__":
     main()

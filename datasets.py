@@ -3,6 +3,7 @@ from pathlib import Path
 
 import torch
 import numpy as np
+import itertools
 # import pandas as pd
 
 from PIL import Image 
@@ -12,7 +13,7 @@ from torchvision import transforms, utils
 
 class ShapeNetDataset(IterableDataset):
 
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, transform=None, split='train'):
         """
         Args:
             root_dir (string): root directory of ShapeNet renderings
@@ -24,16 +25,33 @@ class ShapeNetDataset(IterableDataset):
         # http://shapenet.cs.stanford.edu/shapenet/obj-zip/ShapeNetCore.v2-old/shapenet/tex/TechnicalReport/main.pdf
         # see the link above for semantic labels and synset ids
         # FIXME: hardcoded semantic labels, should be able to specify which classes to train on
-        self.synset_ids = {'telephone': 04401088, 'watercraft': 04530566, 'display': 03211117}
-
+        self.base_synset_ids = {'telephone': '04401088', 'watercraft': '04530566'}
+        # iterators = [Path(os.path.join(self.root_dir, synset_id)).rglob('*.png') for synset_id in \
+                    #self.base_synset_ids.items()]
+        # self.base_classes_iterator = Path(self.root_dir).glob('{04401088,04530566}/*/*/*.png')
+        it_telephone = Path(os.path.join(self.root_dir, '04401088')).rglob('*.jpg')
+        it_watercraft = Path(os.path.join(self.root_dir, '04530566')).rglob('*.jpg')
+        self.base_classes_iterator = itertools.chain(it_telephone, it_watercraft)
+        self.novel_synset_ids = {'display': '03211117'}
 
     def __iter__(self):
         return self
 
     def __next__(self):
+        
+        # get image from base classes
         next_img = None
         while next_img is None or next_img.shape[0] != 3:  # makes sure each jpg file is an RGB image
-            next_img = self.transform(Image.open(next(self.path_iterator)))
+            # filter data by synset ids 
+            next_path = next(self.base_classes_iterator)
+            next_img = self.transform(Image.open(next_path))
+        # next_img = None
+        # while next_img is None or next_img.shape[0] != 3:  # makes sure each jpg file is an RGB image
+        #     # filter data by synset ids 
+        #     next_path = next(self.path_iterator)
+        #     (synset_id, model_id) = next_path.parts[-4], next_path.parts[-3]
+        #     if synset_id in self.base_synset_ids.items():
+        #         next_img = self.transform(Image.open(next(self.path_iterator)))
 
         return next_img 
 
