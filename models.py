@@ -27,31 +27,31 @@ class Flatten(nn.Module):
 
 
 class UnFlatten(nn.Module):
-    def forward(self, input, size=1024):
+    def forward(self, input, size=1000):
         return input.view(input.size(0), size, 1, 1)
 
 
 class VAE(nn.Module):
-    def __init__(self, image_channels=3, h_dim=1024, z_dim=256):
+    def __init__(self, image_channels=3, h_dim=1000, z_dim=256):
         super(VAE, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(image_channels, 32, kernel_size=4, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.Conv2d(128, 256, kernel_size=4, stride=2),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-            nn.Conv2d(256, 256, kernel_size=4, stride=2),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-            Flatten()
-        )
-        
+        self.encoder = torchvision.models.resnet18(pretrained=True)
+        # self.encoder = nn.Sequential(
+        #     nn.Conv2d(image_channels, 32, kernel_size=4, stride=2),
+        #     nn.ReLU(),
+        #     nn.Conv2d(32, 64, kernel_size=4, stride=2),
+        #     nn.BatchNorm2d(64),
+        #     nn.ReLU(),
+        #     nn.Conv2d(64, 128, kernel_size=4, stride=2),
+        #     nn.BatchNorm2d(128),
+        #     nn.ReLU(),
+        #     nn.Conv2d(128, 256, kernel_size=4, stride=2),
+        #     nn.BatchNorm2d(256),
+        #     nn.ReLU(),
+        #     nn.Conv2d(256, 256, kernel_size=4, stride=2),
+        #     nn.BatchNorm2d(256),
+        #     nn.ReLU(),
+        #     Flatten()
+        # )
         self.fc1 = nn.Linear(h_dim, z_dim)
         self.fc2 = nn.Linear(h_dim, z_dim)
         self.fc3 = nn.Linear(z_dim, h_dim)
@@ -100,54 +100,6 @@ class VAE(nn.Module):
         z, mu, logvar = self.encode(x)
         z = self.decode(z)
         return z, mu, logvar
-
-
-class AutoEncoder(nn.Module):
-    
-    def __init__(
-        self,
-        input_shape=(224, 224),     # input image size
-        latent_shape=(256, 1),      # latent vector dimension
-        output_shape=(224, 224),    # output image size
-        encoder_layers=4,
-        decoder_layers=4
-    ):
-        super(AutoEncoder, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, 16, 4, stride=2),  # H_out = (224 - 4) / 2 + 1 = 111,
-            # W_out = (224 - 4) / 2 + 1 = 111
-            nn.ReLU(True),
-            nn.Conv2d(16, 8, 3, stride=2),  # H_out = (111 - 3) / 2 + 1 = 55
-            # W_out = (111 - 3) / 2 + 1 =  55 
-            nn.BatchNorm2d(8),
-            nn.ReLU(True),
-            nn.Conv2d(8, 4, 3, stride=2),  # H_out = (55 - 3) / 2 + 1 = 26 
-            # W_out = (55 - 3) / 2 + 1 = 26
-            nn.BatchNorm2d(4),
-            nn.ReLU(True),
-            nn.Conv2d(4, 1, 4, stride=1),  # H_out = (26 - 4) + 1 = 23 
-            # W_out = (26 - 4) / 2 + 1 = 23 
-            nn.BatchNorm2d(1),
-            # 23 * 23 = 529
-            nn.ReLU(True),
-            # 529-dimensional shape code
-        )
-        self.decoder = nn.Sequential(
-            # View((16, 16, 1)),
-            nn.ConvTranspose2d(1, 4, 3, stride=2, output_padding=5),  # H_out = (23 - 1)*2 + 8 = 52 = W_out
-            nn.ReLU(True),
-            nn.ConvTranspose2d(4, 6, 3, stride=2, output_padding=5),  # H_out = (52 - 1)*2+8 = 110 = W_out
-            nn.ReLU(True),
-            nn.ConvTranspose2d(6, 4, 6, stride=2),  # H_out = (110 - 1)*2 + 6 = 224 = W_out
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        x = self.encoder(x)
-        self.embedding = x
-        x = self.decoder(x)
-        # x is between [0, 1]
-        return x
 
 
 class DeepSDFDecoder(nn.Module):

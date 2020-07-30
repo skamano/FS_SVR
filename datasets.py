@@ -8,7 +8,7 @@ import itertools
 # import pandas as pd
 
 from PIL import Image 
-from torch.utils.data import Dataset, IterableDataset
+from torch.utils.data import Dataset, IterableDataset, DataLoader
 from torchvision import transforms, utils
 from torchvision.datasets import ImageFolder
 
@@ -34,15 +34,11 @@ class ShapeNetDataset(IterableDataset):
         # self.base_classes_iterator = Path(self.root_dir).glob('{04401088,04530566}/*/*/*.png')
         it_telephone = list(Path(os.path.join(self.root_dir, '04401088')).glob('**/*.jpg'))
         it_watercraft = list(Path(os.path.join(self.root_dir, '03211117')).glob('**/*.jpg'))
-        self.length = len(it_telephone) + len(it_watercraft)
         self.base_classes_paths = it_telephone + it_watercraft
-        self.base_classes_iterator = iter(it_telephone + it_watercraft)
+        self.base_classes_iterator = iter(self.base_classes_paths)
         self.novel_synset_ids = {'watercraft': '04530566'}
         self.current_path = None
     
-    def __len__(self):
-        return self.length
-
     # def __getitem__(self, idx):
     #     next_img = None
     #     next_img = self.transform(Image.open(self.base_classes_paths[idx]))
@@ -50,12 +46,29 @@ class ShapeNetDataset(IterableDataset):
     #     return next_img 
     def __iter__(self):
         return self
+        # worker_info = torch.utils.data.get_worker_info()
+        # if worker_info is None:  # single-process dataloading
+            # return self
+        # else:
+        #     dataset = worker_info.dataset
+        #     overall_start = 0
+        #     overall_end = len(self.base_classes_paths) - 1
+        #     per_worker = int(math.ceil((overall_end - overall_start) / float(worker_info.num_workers)))
+        #     worker_id = worker_info.id
+        #     dataset.start = overall_start + worker_id * per_worker
+        #     dataset.end = min(dataset.start + per_worker, overall_end)
+        #     dataset.base_classes_iterator = iter(self.base_classes_paths[dataset.start:dataset.end+1])
+        #     return dataset
 
     def __next__(self):
         # get image from base classes
+        # worker_info = torch.utils.data.get_worker_info()
+        # dataset = worker_info.dataset
         next_img = None
         while next_img is None or next_img.shape[0] != 3:  # makes sure each jpg file is an RGB image
             # filter data by synset ids 
+            # if next_img is not None:
+                # print("File skipped; invalid image format (not RGB)")
             try:
                 self.current_path = next(self.base_classes_iterator)
             except StopIteration:
@@ -67,19 +80,20 @@ class ShapeNetDataset(IterableDataset):
         #     (synset_id, model_id) = next_path.parts[-4], next_path.parts[-3]
         #     if synset_id in self.base_synset_ids.items():
         #         next_img = self.transform(Image.open(next(self.path_iterator)))
-
-        return next_img 
+        # print(self.current_path)
+        return next_img
 
     def worker_init_fn(self, worker_id):
         worker_info = torch.utils.data.get_worker_info()
         dataset = worker_info.dataset
         overall_start = 0
-        overall_end = len(self) - 1
+        overall_end = len(self.base_classes_paths) - 1
         per_worker = int(math.ceil((overall_end - overall_start) / float(worker_info.num_workers)))
         worker_id = worker_info.id
         dataset.start = overall_start + worker_id * per_worker
         dataset.end = min(dataset.start + per_worker, overall_end)
-        dataset.base_classes_iterator = iter(self.base_classes_paths[dataset.start:dataset.end])
+        dataset.base_classes_iterator = iter(self.base_classes_paths[dataset.start:dataset.end+1])
+
 
     def get_views(self, synset_id, model_id):
         """
@@ -98,7 +112,7 @@ class ShapeNetDataset(IterableDataset):
         """
         all_views = []
         toTensor = transforms.toTensor()
-        for path in Path(os.path.join(self.root_dir, synset_id, model_id)).rglob('*.jpg'):
+        for path in Path(os.path.join(self.root_dir, synset_id, model_id)).glob('**/*.jpg'):
             img = toTensor(Image.open(path))
             all_views.append(img)
 
@@ -108,4 +122,3 @@ class ShapeNetDataset(IterableDataset):
     def get_points(self, synset_id, model_id):
         return np.load(os.path.join(self.root_dir, synset_id, model_id, 'points.npz')) 
 
-        
