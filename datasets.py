@@ -31,15 +31,25 @@ class ShapeNetDataset(IterableDataset):
         self.base_synset_ids = {'telephone': '04401088', 'display': '03211117'}
         # iterators = [Path(os.path.join(self.root_dir, synset_id)).rglob('*.png') for synset_id in \
                     #self.base_synset_ids.items()]
-        # self.base_classes_iterator = Path(self.root_dir).glob('{04401088,04530566}/*/*/*.png')
-        it_telephone = list(Path(os.path.join(self.root_dir, '04401088')).glob('**/*.jpg'))
-        it_watercraft = list(Path(os.path.join(self.root_dir, '03211117')).glob('**/*.jpg'))
-        self.length = len(it_telephone) + len(it_watercraft)
-        self.base_classes_paths = it_telephone + it_watercraft
-        self.base_classes_iterator = iter(it_telephone + it_watercraft)
-        self.novel_synset_ids = {'watercraft': '04530566'}
+        	# self.base_classes_iterator = Path(self.root_dir).glob('{04401088,04530566}/*/*/*.png')
+        	#it_telephone = list(Path(os.path.join(self.root_dir, '04401088')).glob('**/*.jpg'))
+        	#it_watercraft = list(Path(os.path.join(self.root_dir, '03211117')).glob('**/*.jpg'))
+        	#self.length = len(it_telephone) + len(it_watercraft)
+        	#self.base_classes_paths = it_telephone + it_watercraft
+        	#self.base_classes_iterator = iter(it_telephone + it_watercraft)
+        	#self.novel_synset_ids = {'watercraft': '04530566'}
+        	#self.current_path = None
+		###############
+        self.base_synset_ids = {'bench': '02828884', 'cabinet': '02933112'}
+
+        it_bench = list(Path(os.path.join(self.root_dir, '02828884')).glob('**/*.jpg'))
+        it_cabinet = list(Path(os.path.join(self.root_dir, '02933112')).glob('**/*.jpg'))
+        self.length = len(it_bench) + len(it_cabinet)
+        self.base_classes_paths = it_bench + it_cabinet
+        self.base_classes_iterator = iter(it_bench + it_cabinet)
+        self.novel_synset_ids = {'display': '0321117'}
         self.current_path = None
-    
+
     def __len__(self):
         return self.length
 
